@@ -9,13 +9,19 @@ import json
 import os
 from plyer import notification
 import sys
+from translations import translations
 
 class PomodoroTimer:
     def __init__(self, root):
         self.root = root
-        self.root.title("Pomodoro Timer")
-        self.root.geometry("600x500")
+        self.root.title("Pomodoro")
+        self.root.geometry("800x600")
         self.root.resizable(True, True)
+        
+        # Set window icon
+        icon_path = os.path.join(os.path.dirname(__file__), "icon_pomodoro.ico")
+        if os.path.exists(icon_path):
+            self.root.iconbitmap(icon_path)
         
         # Timer durations in seconds
         self.durations = {
@@ -39,6 +45,7 @@ class PomodoroTimer:
         # User preferences
         self.theme = "darkly"  # Default dark theme
         self.volume = 50  # Default volume (0-100)
+        self.language = "en"  # Default language
         
         # Load saved preferences
         self.load_preferences()
@@ -65,13 +72,13 @@ class PomodoroTimer:
         header_frame = ttk.Frame(main_frame)
         header_frame.pack(fill=X, pady=(0, 20))
         
-        title_label = ttk.Label(header_frame, text="Pomodoro Timer", font=("TkDefaultFont", 24, "bold"))
+        title_label = ttk.Label(header_frame, text=translations[self.language]["app_title"], font=("TkDefaultFont", 24, "bold"))
         title_label.pack(side=LEFT)
         
         # Session tracking display
         self.session_label = ttk.Label(
             header_frame, 
-            text=f"Sessions: {self.completed_sessions}/{self.total_sessions}", 
+            text=f"{translations[self.language]['sessions']}: {self.completed_sessions}/{self.total_sessions}", 
             font=("TkDefaultFont", 12)
         )
         self.session_label.pack(side=RIGHT, padx=10)
@@ -82,7 +89,7 @@ class PomodoroTimer:
         
         self.session_type_label = ttk.Label(
             self.session_type_frame,
-            text="WORK SESSION",
+            text=translations[self.language]["work_session"],
             font=("TkDefaultFont", 12, "bold"),
             bootstyle=SUCCESS
         )
@@ -120,7 +127,7 @@ class PomodoroTimer:
         # Start button
         self.start_button = ttk.Button(
             buttons_frame,
-            text="Start",
+            text=translations[self.language]["start"],
             bootstyle=SUCCESS,
             command=self.start_timer,
             width=15
@@ -130,7 +137,7 @@ class PomodoroTimer:
         # Pause button
         self.pause_button = ttk.Button(
             buttons_frame,
-            text="Pause",
+            text=translations[self.language]["pause"],
             bootstyle=WARNING,
             command=self.pause_timer,
             width=15,
@@ -141,7 +148,7 @@ class PomodoroTimer:
         # Reset button
         self.reset_button = ttk.Button(
             buttons_frame,
-            text="Reset",
+            text=translations[self.language]["reset"],
             bootstyle=DANGER,
             command=self.reset_timer,
             width=15
@@ -149,14 +156,53 @@ class PomodoroTimer:
         self.reset_button.pack(side=LEFT, padx=10)
         
         # Settings frame
-        settings_frame = ttk.LabelFrame(main_frame, text="Settings", padding=10)
+        settings_frame = ttk.LabelFrame(main_frame, text=self.get_text("settings"), padding=10)
         settings_frame.pack(fill=X, pady=20)
+        
+        # Language selection
+        lang_frame = ttk.Frame(settings_frame)
+        lang_frame.pack(fill=X, pady=5)
+        
+        lang_label = ttk.Label(lang_frame, text=self.get_text("language"))
+        lang_label.pack(side=LEFT, padx=(0, 10))
+        
+        # Liste des langues avec leurs noms dans leur langue respective
+        language_names = {
+            "en": "English",
+            "fr": "Français",
+            "de": "Deutsch",
+            "ar": "العربية",
+            "es": "Español",
+            "it": "Italiano",
+            "pt": "Português",
+            "ru": "Русский",
+            "zh": "中文",
+            "ja": "日本語"
+        }
+        
+        self.lang_var = tk.StringVar(value=self.language)
+        lang_combo = ttk.Combobox(
+            lang_frame,
+            textvariable=self.lang_var,
+            values=list(language_names.keys()),
+            width=15,
+            state="readonly"
+        )
+        
+        # Fonction pour afficher les noms des langues dans le menu déroulant
+        def get_language_display(lang_code):
+            return f"{lang_code} - {language_names[lang_code]}"
+        
+        lang_combo['values'] = [get_language_display(code) for code in language_names.keys()]
+        lang_combo.set(get_language_display(self.language))
+        lang_combo.pack(side=LEFT)
+        lang_combo.bind("<<ComboboxSelected>>", lambda e: self.change_language(e, language_names))
         
         # Theme toggle
         theme_frame = ttk.Frame(settings_frame)
         theme_frame.pack(fill=X, pady=5)
         
-        theme_label = ttk.Label(theme_frame, text="Theme:")
+        theme_label = ttk.Label(theme_frame, text=self.get_text("theme"))
         theme_label.pack(side=LEFT, padx=(0, 10))
         
         self.theme_var = tk.StringVar(value=self.theme)
@@ -174,7 +220,7 @@ class PomodoroTimer:
         volume_frame = ttk.Frame(settings_frame)
         volume_frame.pack(fill=X, pady=5)
         
-        volume_label = ttk.Label(volume_frame, text="Volume:")
+        volume_label = ttk.Label(volume_frame, text=self.get_text("volume"))
         volume_label.pack(side=LEFT, padx=(0, 10))
         
         self.volume_var = tk.IntVar(value=self.volume)
@@ -196,7 +242,7 @@ class PomodoroTimer:
         
         shortcuts_label = ttk.Label(
             shortcuts_frame,
-            text="Keyboard Shortcuts: Space (Start/Pause), R (Reset)",
+            text=self.get_text("shortcuts"),
             font=("TkDefaultFont", 9),
             foreground="gray"
         )
@@ -235,7 +281,7 @@ class PomodoroTimer:
         self.timer_running = False
         
         # Update button states
-        self.start_button.config(state=NORMAL, text="Resume")
+        self.start_button.config(state=NORMAL, text=self.get_text("resume"))
         self.pause_button.config(state=DISABLED)
     
     def reset_timer(self):
@@ -255,10 +301,10 @@ class PomodoroTimer:
         # Update UI
         self.timer_display.config(text=self.format_time(self.time_remaining))
         self.progress_bar.config(value=0, bootstyle=SUCCESS)
-        self.session_type_label.config(text="WORK SESSION", bootstyle=SUCCESS)
+        self.session_type_label.config(text=self.get_text("work_session"), bootstyle=SUCCESS)
         
         # Reset button states
-        self.start_button.config(state=NORMAL, text="Start")
+        self.start_button.config(state=NORMAL, text=self.get_text("start"))
         self.pause_button.config(state=DISABLED)
     
     def toggle_timer(self):
@@ -328,7 +374,7 @@ class PomodoroTimer:
         self.timer_paused = False
         
         # Update button states
-        self.root.after(0, lambda: self.start_button.config(state=NORMAL, text="Start"))
+        self.root.after(0, lambda: self.start_button.config(state=NORMAL, text=self.get_text("start")))
         self.root.after(0, lambda: self.pause_button.config(state=DISABLED))
         
         # Handle session completion
@@ -336,7 +382,7 @@ class PomodoroTimer:
             # Increment completed sessions
             self.completed_sessions += 1
             self.root.after(0, lambda: self.session_label.config(
-                text=f"Sessions: {self.completed_sessions}/{self.total_sessions}"
+                text=f"{self.get_text('sessions')}: {self.completed_sessions}/{self.total_sessions}"
             ))
             
             # Determine next break type
@@ -345,42 +391,42 @@ class PomodoroTimer:
                 self.current_timer_type = "long_break"
                 self.time_remaining = self.durations["long_break"]
                 self.root.after(0, lambda: self.session_type_label.config(
-                    text="LONG BREAK", bootstyle=INFO
+                    text=self.get_text("long_break"), bootstyle=INFO
                 ))
                 self.root.after(0, lambda: self.progress_bar.config(bootstyle=INFO))
                 
                 # Show notification
                 self.show_notification(
-                    "Time for a long break!",
-                    "Take 15 minutes to relax and recharge."
+                    self.get_text("long_break_notification_title"),
+                    self.get_text("long_break_notification_message")
                 )
             else:
                 # Short break after sessions 1-3
                 self.current_timer_type = "short_break"
                 self.time_remaining = self.durations["short_break"]
                 self.root.after(0, lambda: self.session_type_label.config(
-                    text="SHORT BREAK", bootstyle=WARNING
+                    text=self.get_text("short_break"), bootstyle=WARNING
                 ))
                 self.root.after(0, lambda: self.progress_bar.config(bootstyle=WARNING))
                 
                 # Show notification
                 self.show_notification(
-                    "Time for a short break!",
-                    "Take 5 minutes to relax."
+                    self.get_text("short_break_notification_title"),
+                    self.get_text("short_break_notification_message")
                 )
         else:
             # After break, go back to work
             self.current_timer_type = "work"
             self.time_remaining = self.durations["work"]
             self.root.after(0, lambda: self.session_type_label.config(
-                text="WORK SESSION", bootstyle=SUCCESS
+                text=self.get_text("work_session"), bootstyle=SUCCESS
             ))
             self.root.after(0, lambda: self.progress_bar.config(bootstyle=SUCCESS))
             
             # Show notification
             self.show_notification(
-                "Break finished!",
-                "Time to get back to work."
+                self.get_text("break_finished_notification_title"),
+                self.get_text("break_finished_notification_message")
             )
         
         # Update timer display with new time
@@ -429,6 +475,30 @@ class PomodoroTimer:
         except Exception as e:
             print(f"Notification error: {e}")
     
+    def get_text(self, key):
+        """Get translated text for the given key"""
+        return translations[self.language][key]
+    
+    def change_language(self, event=None, language_names=None):
+        """Change the application language"""
+        if language_names:
+            # Extraire le code de langue de la sélection (format: "code - name")
+            selected = self.lang_var.get()
+            self.language = selected.split(" - ")[0]
+        else:
+            self.language = self.lang_var.get()
+        self.save_preferences()
+        self.update_ui_text()
+    
+    def update_ui_text(self):
+        """Update all UI text elements with the current language"""
+        self.root.title(translations[self.language]["app_title"])
+        self.session_type_label.configure(text=translations[self.language]["work_session"])
+        self.start_button.configure(text=translations[self.language]["start"])
+        self.pause_button.configure(text=translations[self.language]["pause"])
+        self.reset_button.configure(text=translations[self.language]["reset"])
+        self.session_label.configure(text=f"{translations[self.language]['sessions']}: {self.completed_sessions}/{self.total_sessions}")
+    
     def change_theme(self, event=None):
         """Change the application theme"""
         selected_theme = self.theme_var.get()
@@ -450,6 +520,7 @@ class PomodoroTimer:
                     prefs = json.load(f)
                     self.theme = prefs.get("theme", self.theme)
                     self.volume = prefs.get("volume", self.volume)
+                    self.language = prefs.get("language", self.language)
         except Exception as e:
             print(f"Error loading preferences: {e}")
     
@@ -458,7 +529,8 @@ class PomodoroTimer:
         try:
             prefs = {
                 "theme": self.theme,
-                "volume": self.volume
+                "volume": self.volume,
+                "language": self.language
             }
             with open("preferences.json", "w") as f:
                 json.dump(prefs, f)
@@ -470,8 +542,8 @@ class PomodoroTimer:
         if self.timer_running or self.timer_paused:
             # Ask for confirmation if timer is running
             confirm = Messagebox.yesno(
-                "Confirm Exit",
-                "Timer is still running. Are you sure you want to exit?",
+                self.get_text("confirm_exit_title"),
+                self.get_text("confirm_exit_message"),
                 parent=self.root
             )
             if not confirm:
